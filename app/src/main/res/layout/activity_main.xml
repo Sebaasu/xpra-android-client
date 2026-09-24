@@ -1,23 +1,152 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/rootContainer"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="#000000">
 
+    <!-- Visor de Xpra -->
     <WebView
         android:id="@+id/webView"
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
-    <ImageButton
-        android:id="@+id/btnKeyboard"
-        android:layout_width="56dp"
-        android:layout_height="56dp"
+    <!-- Capa invisible de captura de gestos Trackpad -->
+    <View
+        android:id="@+id/touchpadOverlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <!-- Barra de Teclas Especiales de Linux (Superior) -->
+    <HorizontalScrollView
+        android:id="@+id/specialKeyBar"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:layout_gravity="top"
+        android:background="#DD1E1E1E"
+        android:visibility="gone"
+        android:scrollbars="none">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingHorizontal="4dp">
+
+            <Button
+                android:id="@+id/btnEsc"
+                style="@style/Widget.AppCompat.Button.Borderless"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="ESC"
+                android:textColor="#FFFFFF" />
+
+            <Button
+                android:id="@+id/btnTab"
+                style="@style/Widget.AppCompat.Button.Borderless"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="TAB"
+                android:textColor="#FFFFFF" />
+
+            <ToggleButton
+                android:id="@+id/toggleCtrl"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textOn="CTRL"
+                android:textOff="CTRL"
+                android:textColor="#FFFFFF" />
+
+            <ToggleButton
+                android:id="@+id/toggleAlt"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textOn="ALT"
+                android:textOff="ALT"
+                android:textColor="#FFFFFF" />
+
+            <Button
+                android:id="@+id/btnSuper"
+                style="@style/Widget.AppCompat.Button.Borderless"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="SUPER"
+                android:textColor="#FFFFFF" />
+
+            <Button
+                android:id="@+id/btnUp"
+                style="@style/Widget.AppCompat.Button.Borderless"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="▲"
+                android:textColor="#FFFFFF" />
+
+            <Button
+                android:id="@+id/btnDown"
+                style="@style/Widget.AppCompat.Button.Borderless"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="▼"
+                android:textColor="#FFFFFF" />
+
+            <Button
+                android:id="@+id/btnLeft"
+                style="@style/Widget.AppCompat.Button.Borderless"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="◀"
+                android:textColor="#FFFFFF" />
+
+            <Button
+                android:id="@+id/btnRight"
+                style="@style/Widget.AppCompat.Button.Borderless"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="▶"
+                android:textColor="#FFFFFF" />
+
+            <Button
+                android:id="@+id/btnEnter"
+                style="@style/Widget.AppCompat.Button.Borderless"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="↵"
+                android:textColor="#FFFFFF" />
+
+        </LinearLayout>
+    </HorizontalScrollView>
+
+    <!-- Controles flotantes en la esquina inferior derecha -->
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
         android:layout_gravity="bottom|end"
         android:layout_margin="16dp"
-        android:contentDescription="Keyboard"
-        android:src="@android:drawable/ic_menu_edit"
-        android:background="@android:drawable/btn_default"
-        android:alpha="0.75" />
+        android:orientation="horizontal"
+        android:gravity="center">
+
+        <!-- Botón para alternar la barra de teclas especiales (Ctrl, Alt, etc.) -->
+        <ImageButton
+            android:id="@+id/btnToggleKeys"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginEnd="8dp"
+            android:contentDescription="Special Keys"
+            android:src="@android:drawable/ic_menu_preferences"
+            android:background="@android:drawable/btn_default"
+            android:alpha="0.75" />
+
+        <!-- Botón para alternar teclado Android -->
+        <ImageButton
+            android:id="@+id/btnKeyboard"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:contentDescription="Keyboard"
+            android:src="@android:drawable/ic_menu_edit"
+            android:background="@android:drawable/btn_default"
+            android:alpha="0.75" />
+
+    </LinearLayout>
 
 </FrameLayout>
