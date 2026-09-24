@@ -15,6 +15,7 @@ import android.webkit.WebViewClient;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.ToggleButton;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
@@ -23,6 +24,7 @@ public class MainActivity extends AppCompatActivity {
 
     private WebView webView;
     private View touchpadOverlay;
+    private ImageView virtualCursorIcon;
     private View specialKeyBar;
     private ImageButton btnToggleKeys;
     private ImageButton btnKeyboard;
@@ -33,9 +35,9 @@ public class MainActivity extends AppCompatActivity {
     private static final String PREF_SERVER_URL = "server_url";
     private static final String DEFAULT_URL = "http://100.94.216.124:9876";
 
-    // Variables de cursor virtual
-    private float virtualCursorX = 500;
-    private float virtualCursorY = 500;
+    // Posición del cursor en pantalla
+    private float cursorX = 300;
+    private float cursorY = 300;
     private float lastTouchX = 0;
     private float lastTouchY = 0;
     private GestureDetector gestureDetector;
@@ -49,6 +51,7 @@ public class MainActivity extends AppCompatActivity {
         prefs = getSharedPreferences("XpraPrefs", MODE_PRIVATE);
         webView = findViewById(R.id.webView);
         touchpadOverlay = findViewById(R.id.touchpadOverlay);
+        virtualCursorIcon = findViewById(R.id.virtualCursorIcon);
         specialKeyBar = findViewById(R.id.specialKeyBar);
         btnToggleKeys = findViewById(R.id.btnToggleKeys);
         btnKeyboard = findViewById(R.id.btnKeyboard);
@@ -59,6 +62,9 @@ public class MainActivity extends AppCompatActivity {
         setupTouchpad();
         setupSpecialKeys();
         setupControls();
+
+        // Posicionar cursor inicial
+        updateCursorVisualPosition();
 
         String url = prefs.getString(PREF_SERVER_URL, null);
         if (url == null) {
@@ -95,39 +101,46 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void injectMobileScript() {
-        // Script inyectado que maneja cursor virtual nativo, clics y teclado
+        // Enlazar eventos directamente con el cliente Xpra interno (client.do_window_mouse_move)
         String js = "javascript:(function() {" +
                 "  document.body.style.overflow = 'hidden';" +
                 "  document.body.style.touchAction = 'none';" +
                 "  window.__sendXpraKey = function(keyName, ctrl, alt) {" +
-                "    var client = window.client || (window.Xpra && window.Xpra.client);" +
-                "    if (client && client.send_key_action) {" +
-                "      var modifiers = [];" +
-                "      if (ctrl) modifiers.push('control');" +
-                "      if (alt) modifiers.push('mod1');" +
-                "      client.send_key_action(keyName, true, modifiers);" +
-                "      setTimeout(function(){ client.send_key_action(keyName, false, modifiers); }, 50);" +
-                "    } else {" +
-                "      var ev = new KeyboardEvent('keydown', {key: keyName, bubbles: true, ctrlKey: ctrl, altKey: alt});" +
-                "      document.dispatchEvent(ev);" +
-                "      setTimeout(function(){ document.dispatchEvent(new KeyboardEvent('keyup', {key: keyName, bubbles: true, ctrlKey: ctrl, altKey: alt})); }, 50);" +
+                "    var c = window.client;" +
+                "    var mods = [];" +
+                "    if (ctrl) mods.push('control');" +
+                "    if (alt) mods.push('mod1');" +
+                "    if (c && c.send) {" +
+                "      c.send(['key-action', 0, keyName, true, mods, 0, keyName, 0]);" +
+                "      setTimeout(function(){ c.send(['key-action', 0, keyName, false, mods, 0, keyName, 0]); }, 40);" +
                 "    }" +
                 "  };" +
-                "  window.__sendMouseAction = function(x, y, btn, isDown) {" +
-                "    var client = window.client || (window.Xpra && window.Xpra.client);" +
-                "    if (client && client.send_mouse_action) {" +
-                "      client.send_mouse_action(x, y, btn, isDown);" +
+                "  window.__dispatchMouse = function(x, y, btn, isDown) {" +
+                "    var c = window.client;" +
+                "    var mods = [];" +
+                "    if (c && c.send) {" +
+                "      var btns = isDown ? [btn] : [];" +
+                "      c.send(['button-action', 0, btn, isDown, [x, y], mods]);" +
                 "    } else {" +
-                "      var target = document.elementFromPoint(x, y) || document.body;" +
+                "      var el = document.elementFromPoint(x, y) || document.body;" +
                 "      var type = isDown ? 'mousedown' : 'mouseup';" +
-                "      var ev = new MouseEvent(type, {clientX: x, clientY: y, button: btn, bubbles: true});" +
-                "      target.dispatchEvent(ev);" +
-                "      if (!isDown) target.dispatchEvent(new MouseEvent('click', {clientX: x, clientY: y, button: btn, bubbles: true}));" +
+                "      el.dispatchEvent(new MouseEvent(type, {clientX: x, clientY: y, button: btn-1, bubbles: true}));" +
+                "      if (!isDown) el.dispatchEvent(new MouseEvent('click', {clientX: x, clientY: y, button: btn-1, bubbles: true}));" +
                 "    }" +
                 "  };" +
-                "  window.__sendWheelAction = function(deltaY) {" +
-                "    var ev = new WheelEvent('wheel', {deltaY: deltaY, bubbles: true});" +
-                "    document.dispatchEvent(ev);" +
+                "  window.__dispatchMove = function(x, y) {" +
+                "    var c = window.client;" +
+                "    if (c && c.send) {" +
+                "      c.send(['pointer-position', 0, [x, y], []]);" +
+                "    }" +
+                "  };" +
+                "  window.__dispatchWheel = function(x, y, up) {" +
+                "    var c = window.client;" +
+                "    var btn = up ? 4 : 5;" +
+                "    if (c && c.send) {" +
+                "      c.send(['button-action', 0, btn, true, [x, y], []]);" +
+                "      c.send(['button-action', 0, btn, false, [x, y], []]);" +
+                "    }" +
                 "  };" +
                 "})()";
         webView.loadUrl(js);
@@ -138,21 +151,20 @@ public class MainActivity extends AppCompatActivity {
         gestureDetector = new GestureDetector(this, new GestureDetector.SimpleOnGestureListener() {
             @Override
             public boolean onSingleTapConfirmed(MotionEvent e) {
-                // Toque 1 dedo = Clic izquierdo
-                simulateClick(1);
+                // Tap 1 dedo = Clic izquierdo en la posición del cursor
+                triggerClick(1);
                 return true;
             }
 
             @Override
             public void onLongPress(MotionEvent e) {
-                // Toque sostenido = Clic derecho
-                simulateClick(3);
+                // Long press = Clic derecho
+                triggerClick(3);
             }
 
             @Override
             public boolean onDoubleTap(MotionEvent e) {
-                // Doble toque = Clic izquierdo rápido
-                simulateClick(1);
+                triggerClick(1);
                 return true;
             }
         });
@@ -164,7 +176,6 @@ public class MainActivity extends AppCompatActivity {
             int action = event.getActionMasked();
 
             if (pointerCount == 1) {
-                // Movimiento relativo de 1 dedo = Mover cursor del mouse
                 float x = event.getX();
                 float y = event.getY();
 
@@ -172,56 +183,61 @@ public class MainActivity extends AppCompatActivity {
                     lastTouchX = x;
                     lastTouchY = y;
                 } else if (action == MotionEvent.ACTION_MOVE) {
-                    float dx = (x - lastTouchX) * 1.5f;
-                    float dy = (y - lastTouchY) * 1.5f;
+                    float dx = (x - lastTouchX) * 1.6f;
+                    float dy = (y - lastTouchY) * 1.6f;
 
-                    virtualCursorX = Math.max(0, Math.min(webView.getWidth(), virtualCursorX + dx));
-                    virtualCursorY = Math.max(0, Math.min(webView.getHeight(), virtualCursorY + dy));
+                    cursorX = Math.max(0, Math.min(touchpadOverlay.getWidth(), cursorX + dx));
+                    cursorY = Math.max(0, Math.min(touchpadOverlay.getHeight(), cursorY + dy));
 
                     lastTouchX = x;
                     lastTouchY = y;
 
-                    sendMouseMove((int) virtualCursorX, (int) virtualCursorY);
+                    updateCursorVisualPosition();
+                    sendMoveToXpra((int) cursorX, (int) cursorY);
                 }
             } else if (pointerCount == 2) {
-                // 2 dedos = Scroll vertical / rueda del ratón
+                // Dos dedos = scroll de rueda
                 if (action == MotionEvent.ACTION_MOVE) {
                     float y = event.getY(0);
                     float dy = y - lastTouchY;
                     lastTouchY = y;
-                    if (Math.abs(dy) > 10) {
-                        sendMouseWheel(dy > 0 ? -120 : 120);
+                    if (Math.abs(dy) > 12) {
+                        sendWheelToXpra((int) cursorX, (int) cursorY, dy > 0);
                     }
                 } else if (action == MotionEvent.ACTION_POINTER_UP) {
-                    // Si se levantan 2 dedos rápidamente = Clic derecho
-                    simulateClick(3);
+                    // Tap con 2 dedos = Clic derecho
+                    triggerClick(3);
                 }
             }
             return true;
         });
     }
 
-    private void simulateClick(int button) {
-        int x = (int) virtualCursorX;
-        int y = (int) virtualCursorY;
-        String jsDown = String.format("javascript:window.__sendMouseAction(%d, %d, %d, true);", x, y, button);
-        String jsUp = String.format("javascript:window.__sendMouseAction(%d, %d, %d, false);", x, y, button);
-        webView.loadUrl(jsDown);
-        webView.postDelayed(() -> webView.loadUrl(jsUp), 50);
+    private void updateCursorVisualPosition() {
+        virtualCursorIcon.setX(cursorX);
+        virtualCursorIcon.setY(cursorY);
     }
 
-    private void sendMouseMove(int x, int y) {
-        String js = String.format("javascript:if(window.client&&window.client.send_mouse_position){window.client.send_mouse_position(%d,%d);}", x, y);
+    private void triggerClick(int button) {
+        int x = (int) cursorX;
+        int y = (int) cursorY;
+        String jsDown = String.format("javascript:window.__dispatchMouse(%d, %d, %d, true);", x, y, button);
+        String jsUp = String.format("javascript:window.__dispatchMouse(%d, %d, %d, false);", x, y, button);
+        webView.loadUrl(jsDown);
+        webView.postDelayed(() -> webView.loadUrl(jsUp), 40);
+    }
+
+    private void sendMoveToXpra(int x, int y) {
+        String js = String.format("javascript:window.__dispatchMove(%d, %d);", x, y);
         webView.loadUrl(js);
     }
 
-    private void sendMouseWheel(int delta) {
-        String js = String.format("javascript:window.__sendWheelAction(%d);", delta);
+    private void sendWheelToXpra(int x, int y, boolean up) {
+        String js = String.format("javascript:window.__dispatchWheel(%d, %d, %b);", x, y, up);
         webView.loadUrl(js);
     }
 
     private void setupSpecialKeys() {
-        // Enlazar teclas especiales
         bindKey(findViewById(R.id.btnEsc), "Escape");
         bindKey(findViewById(R.id.btnTab), "Tab");
         bindKey(findViewById(R.id.btnSuper), "Super_L");
@@ -240,14 +256,12 @@ public class MainActivity extends AppCompatActivity {
             String js = String.format("javascript:window.__sendXpraKey('%s', %b, %b);", keyName, ctrl, alt);
             webView.loadUrl(js);
 
-            // Desactivar modificadores de un solo uso
             if (ctrl) toggleCtrl.setChecked(false);
             if (alt) toggleAlt.setChecked(false);
         });
     }
 
     private void setupControls() {
-        // Mostrar / Ocultar barra superior de teclas especiales
         btnToggleKeys.setOnClickListener(v -> {
             if (specialKeyBar.getVisibility() == View.VISIBLE) {
                 specialKeyBar.setVisibility(View.GONE);
@@ -256,7 +270,6 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        // Alternar teclado nativo de Android
         btnKeyboard.setOnClickListener(v -> {
             InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
             if (imm != null) {
@@ -264,7 +277,6 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        // Mantener presionado para cambiar URL
         btnKeyboard.setOnLongClickListener(v -> {
             promptServerUrl();
             return true;

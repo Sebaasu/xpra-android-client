@@ -17,6 +17,15 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
+    <!-- Cursor visual de ratón en pantalla (Flecha) -->
+    <ImageView
+        android:id="@+id/virtualCursorIcon"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:src="@android:drawable/arrow_up_float"
+        android:tint="#FFFFFF"
+        android:elevation="10dp" />
+
     <!-- Barra de Teclas Especiales de Linux (Superior) -->
     <HorizontalScrollView
         android:id="@+id/specialKeyBar"
@@ -25,7 +34,8 @@
         android:layout_gravity="top"
         android:background="#DD1E1E1E"
         android:visibility="gone"
-        android:scrollbars="none">
+        android:scrollbars="none"
+        android:elevation="12dp">
 
         <LinearLayout
             android:layout_width="wrap_content"
@@ -124,9 +134,9 @@
         android:layout_gravity="bottom|end"
         android:layout_margin="16dp"
         android:orientation="horizontal"
-        android:gravity="center">
+        android:gravity="center"
+        android:elevation="12dp">
 
-        <!-- Botón para alternar la barra de teclas especiales (Ctrl, Alt, etc.) -->
         <ImageButton
             android:id="@+id/btnToggleKeys"
             android:layout_width="48dp"
@@ -137,7 +147,6 @@
             android:background="@android:drawable/btn_default"
             android:alpha="0.75" />
 
-        <!-- Botón para alternar teclado Android -->
         <ImageButton
             android:id="@+id/btnKeyboard"
             android:layout_width="48dp"
