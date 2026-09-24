@@ -11,14 +11,14 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.EditText;
+import android.widget.ImageButton;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
-import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 public class MainActivity extends AppCompatActivity {
 
     private WebView webView;
-    private FloatingActionButton fabKeyboard;
+    private ImageButton btnKeyboard;
     private SharedPreferences prefs;
     private static final String PREF_SERVER_URL = "server_url";
     private static final String DEFAULT_URL = "http://100.94.216.124:9876";
@@ -31,7 +31,7 @@ public class MainActivity extends AppCompatActivity {
 
         prefs = getSharedPreferences("XpraPrefs", MODE_PRIVATE);
         webView = findViewById(R.id.webView);
-        fabKeyboard = findViewById(R.id.fabKeyboard);
+        btnKeyboard = findViewById(R.id.btnKeyboard);
 
         setupWebView();
         setupControls();
@@ -56,7 +56,6 @@ public class MainActivity extends AppCompatActivity {
         settings.setBuiltInZoomControls(false);
         settings.setDisplayZoomControls(false);
 
-        // Desactivar comportamientos de arrastre y rebote del navegador
         webView.setOverScrollMode(View.OVER_SCROLL_NEVER);
         webView.setVerticalScrollBarEnabled(false);
         webView.setHorizontalScrollBarEnabled(false);
@@ -72,10 +71,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void injectMobileOptimizations() {
-        // Inyecta CSS y JS para:
-        // 1. Eliminar barras de scroll y desbordes del navegador
-        // 2. Prevenir el zoom por doble toque accidental
-        // 3. Forzar el modo pantalla completa del canvas
         String js = "javascript:(function() {" +
                 "  var meta = document.querySelector('meta[name=viewport]');" +
                 "  if (!meta) {" +
@@ -91,16 +86,14 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void setupControls() {
-        // Toggle teclado virtual de Android
-        fabKeyboard.setOnClickListener(v -> {
+        btnKeyboard.setOnClickListener(v -> {
             InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
             if (imm != null) {
                 imm.toggleSoftInput(InputMethodManager.SHOW_FORCED, 0);
             }
         });
 
-        // Mantener presionado el botón flotante para cambiar la IP/URL
-        fabKeyboard.setOnLongClickListener(v -> {
+        btnKeyboard.setOnLongClickListener(v -> {
             promptServerUrl();
             return true;
         });
